@@ -1,4 +1,4 @@
-
+import Link from "next/link"
 
 const NAVBAR = () => {
   return (
@@ -16,10 +16,10 @@ const NAVBAR = () => {
     {/* Buttons */}
     <div className="flex space-x-4">
       <button className="border border-orange-400 text-orange-400 px-4 py-2 rounded hover:bg-orange-400 hover:text-black">
-        Login
+        <Link href="/auth/login">Login</Link>
       </button>
       <button className="bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 rounded hover:from-orange-600 hover:to-red-600">
-        Register
+        <Link href="auth/signup"> Register</Link>
       </button>
     </div>
   </div>

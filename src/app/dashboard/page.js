@@ -1,6 +1,6 @@
 "use client"
-import { Button } from "../../../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Button } from "../../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
 import { Server, Users, LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 
