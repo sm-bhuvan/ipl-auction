@@ -1,4 +1,8 @@
+import Link from "next/link";
 const Welcome = () => {
+    const handleDashboard = () => {
+        window.location.href = "/dashboard";
+    };
     return (
         <>
       <section className="relative min-h-[80vh] flex items-center justify-center">
@@ -13,9 +17,11 @@ const Welcome = () => {
             </span>
           </h1>
           <p className="text-2xl text-gray-300 mb-8 font-medium">Bid. Build. Battle.</p>
-          <button className="bg-gradient-to-r from-orange-500 to-red-500 px-8 py-4 text-lg font-semibold rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 transform hover:scale-105">
+          <Link href={"/dashboard"}>
+          <button className="bg-gradient-to-r from-orange-500 to-red-500 px-8 py-4 text-lg font-semibold rounded-full shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 transform hover:scale-105 cursor-pointer">
             Start Bidding
           </button>
+          </Link>
         </div>
       </section>
         
