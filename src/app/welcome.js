@@ -1,8 +1,5 @@
 import Link from "next/link";
 const Welcome = () => {
-    const handleDashboard = () => {
-        window.location.href = "/dashboard";
-    };
     return (
         <>
       <section className="relative min-h-[80vh] flex items-center justify-center">

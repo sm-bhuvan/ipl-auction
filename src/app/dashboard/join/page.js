@@ -1,9 +1,31 @@
-"use client"
-import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+"use client";
 
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation"; // ✅ Correct import
 
-const join = () => {
+const Join = () => {
+  const router = useRouter();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const roomCode = e.target.elements[0].value;
+
+    if (roomCode) {
+      const ws = new WebSocket(`ws://localhost:8080`);
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "join", room: roomCode }));
+        router.push(`/auctionroom/${roomCode}`);
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+      };
+    } else {
+      console.error("Server code is required");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -21,14 +43,18 @@ const join = () => {
             <CardTitle className="text-white text-2xl font-semibold">Enter the Server Code</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
-            <form onSubmit={()=>{handleSubmit}}>
+            <form onSubmit={handleSubmit}>
               <input
-              type="text"
-              placeholder="Enter Server Code"
-              className="w-full h-14 bg-white/20 text-white placeholder-gray-400 border border-white/30 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"></input>
+                type="text"
+                placeholder="Enter Server Code"
+                className="w-full h-14 bg-white/20 text-white placeholder-gray-400 border border-white/30 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+              />
               <button
                 type="submit"
-                className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-300 mt-4">Submit</button>
+                className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-300 mt-4"
+              >
+                Submit
+              </button>
             </form>
           </CardContent>
         </Card>
@@ -39,7 +65,7 @@ const join = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default join
+export default Join;

@@ -8,7 +8,7 @@ export default function Dashboard() {
   const router = useRouter()
 
   const handleCreateServer = () => {
-    alert("Create Server functionality coming soon!")
+    router.push("/dashboard/create")
   }
 
   const handleJoinServer = () => {

@@ -1,5 +1,8 @@
-import { Geist, Geist_Mono } from "next/font/google";
+// app/layout.js
 import "./globals.css";
+import { Geist, Geist_Mono } from "next/font/google";
+import Providers from "../../components/Providers";
+import { WebSocketProvider } from "./contexts/WebSocketContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,10 +22,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          <WebSocketProvider>
+          {children}
+          </WebSocketProvider>
+        </Providers>
       </body>
     </html>
   );
