@@ -2,9 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useWebSocket } from "@/app/contexts/WebSocketContext";
+import { useRouter } from "next/navigation";
+
 
 const AuctionRoom = () => {
+    const router = useRouter();
   const { roomCode } = useParams();
+  const actualCode=roomCode.slice(0,4)
+  const teamName = decodeURIComponent(roomCode.slice(5))
   const [size, setSize] = useState(null);
   const [error, setError] = useState(null);
 
@@ -13,17 +18,17 @@ const AuctionRoom = () => {
   useEffect(() => {
     const setupAndRequestSize = async () => {
       try {
-        await connect(roomCode);
+        await connect(actualCode);
         setTimeout(() => {
-          sendMessage({ type: "getsize", room: roomCode });
-        }, 100);
+          sendMessage({ type: "getsize", room: actualCode });
+        }, 1000);
       } catch (err) {
         setError("WebSocket connection failed.");
       }
     };
 
     setupAndRequestSize();
-  }, [roomCode]);
+  }, [actualCode]);
 
   useEffect(() => {
     if (!ws) return;
@@ -43,7 +48,10 @@ const AuctionRoom = () => {
       {error ? (
         <p className="text-red-400">{error}</p>
       ) : size !== null ? (
-        <p>Room Code: {roomCode} — Size: {size}</p>
+        <>
+        <p>Room Code: {actualCode} — Size: {size}</p>
+        <button onClick={()=>{router.push(`/Teamdetails/${teamName}`);}}>Proceed to retentions</button>
+        </>
       ) : (
         <p>Loading room size...</p>
       )}
