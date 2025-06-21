@@ -28,7 +28,9 @@ const AuctionRoom = () => {
   const { ws, connect, isConnected, joinRoom, leaveRoom, getReadyState } = useWebSocket();
   useEffect(() => {
     if (size === 20) {
-      router.push("/Mainroom");
+     {/* router.push("/Mainroom/");*/}
+      router.push(`/Mainroom/${roomCode}`);
+
     }
   }, [size, router]);
   const handleMessage = useCallback((event) => {
