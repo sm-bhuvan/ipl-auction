@@ -7,11 +7,12 @@ import { useRouter } from "next/navigation";
 const AuctionRoom = () => {
   const router = useRouter();
   const { roomCode } = useParams();
-
-  if (!roomCode || typeof roomCode !== "string") {
+  
+  // Validate room code first
+  if (!roomCode || typeof roomCode !== "string" || roomCode.length < 5) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
-        <p>Loading room info...</p>
+        <p>Invalid room code. Please check the URL.</p>
       </div>
     );
   }
@@ -19,15 +20,17 @@ const AuctionRoom = () => {
   const actualCode = roomCode.slice(0, 5);
   const teamName = decodeURIComponent(roomCode.slice(5));
 
-
-
   const [size, setSize] = useState(null);
   const [error, setError] = useState(null);
   const [isJoining, setIsJoining] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
 
   const { ws, connect, isConnected, joinRoom, leaveRoom, getReadyState } = useWebSocket();
-
-  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (size === 20) {
+      router.push("/Mainroom");
+    }
+  }, [size, router]);
   const handleMessage = useCallback((event) => {
     try {
       const data = JSON.parse(event.data);
@@ -38,6 +41,7 @@ const AuctionRoom = () => {
           setSize(data.size);
           setIsJoining(false);
           setError(null);
+          setConnectionStatus("Connected!");
           console.log(`Successfully joined room ${data.room} with ${data.size} members`);
           break;
 
@@ -54,12 +58,14 @@ const AuctionRoom = () => {
         case "size":
           setSize(data.size);
           setIsJoining(false);
+          setConnectionStatus("Connected!");
           break;
 
         case "error":
           console.error("Server error:", data.message);
           setError(data.message);
           setIsJoining(false);
+          setConnectionStatus(`Error: ${data.message}`);
           break;
 
         default:
@@ -68,33 +74,56 @@ const AuctionRoom = () => {
     } catch (err) {
       console.error("Error parsing WebSocket message:", err);
       setError("Failed to parse server response");
+      setConnectionStatus("Message error");
     }
   }, []);
 
   // Setup WebSocket connection and join room
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+    let retryTimer;
 
     const setupConnection = async () => {
+      if (!isMounted) return;
+      
       try {
         setIsJoining(true);
         setError(null);
+        setConnectionStatus("Connecting to server...");
 
         // Connect to WebSocket server
         await connect(actualCode);
+        setConnectionStatus("Connected! Joining room...");
 
-        // Wait a moment for connection to stabilize, then join room
-        setTimeout(() => {
-          if (mounted && getReadyState() === WebSocket.OPEN) {
+        // Retry mechanism for joining room
+        const attemptJoinRoom = () => {
+          if (!isMounted) return;
+          
+          const state = getReadyState();
+          if (state === WebSocket.OPEN) {
             joinRoom(actualCode);
+            setConnectionStatus("Waiting for room confirmation...");
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            setConnectionStatus(`Retrying join... (${retryCount}/${maxRetries})`);
+            retryTimer = setTimeout(attemptJoinRoom, 1000);
+          } else {
+            setError("Failed to join room after multiple attempts");
+            setIsJoining(false);
+            setConnectionStatus("Connection failed");
           }
-        }, 100);
+        };
+
+        attemptJoinRoom();
 
       } catch (err) {
-        console.error("Failed to setup WebSocket connection:", err);
-        if (mounted) {
-          setError("Failed to connect to the auction room");
+        console.error("Connection setup failed:", err);
+        if (isMounted) {
+          setError("Failed to connect to the auction server");
           setIsJoining(false);
+          setConnectionStatus("Connection failed");
         }
       }
     };
@@ -102,7 +131,8 @@ const AuctionRoom = () => {
     setupConnection();
 
     return () => {
-      mounted = false;
+      isMounted = false;
+      clearTimeout(retryTimer);
     };
   }, [actualCode, connect, joinRoom, getReadyState]);
 
@@ -110,12 +140,32 @@ const AuctionRoom = () => {
   useEffect(() => {
     if (!ws) return;
 
-    ws.addEventListener("message", handleMessage);
+    const messageHandler = (event) => handleMessage(event);
+    ws.addEventListener("message", messageHandler);
+
+    // Handle connection errors
+    const errorHandler = () => {
+      setError("WebSocket connection error");
+      setConnectionStatus("Connection lost");
+    };
+
+    // Handle connection close
+    const closeHandler = () => {
+      if (getReadyState() === WebSocket.CLOSED) {
+        setError("Connection closed unexpectedly");
+        setConnectionStatus("Disconnected");
+      }
+    };
+
+    ws.addEventListener("error", errorHandler);
+    ws.addEventListener("close", closeHandler);
 
     return () => {
-      ws.removeEventListener("message", handleMessage);
+      ws.removeEventListener("message", messageHandler);
+      ws.removeEventListener("error", errorHandler);
+      ws.removeEventListener("close", closeHandler);
     };
-  }, [ws, handleMessage]);
+  }, [ws, handleMessage, getReadyState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -127,32 +177,36 @@ const AuctionRoom = () => {
   }, [actualCode, leaveRoom, getReadyState]);
 
   const handleProceed = () => {
-    // Leave room before navigating away
     if (getReadyState() === WebSocket.OPEN) {
       leaveRoom(actualCode);
     }
     router.push(`/Teamdetails/${teamName}`);
   };
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     setError(null);
     setIsJoining(true);
-    setSize(null);
-
-    // Reconnect and join room
-    connect(actualCode)
-      .then(() => {
-        setTimeout(() => {
-          if (getReadyState() === WebSocket.OPEN) {
-            joinRoom(actualCode);
-          }
-        }, 1000);
-      })
-      .catch((err) => {
-        console.error("Retry failed:", err);
-        setError("Retry failed. Please refresh the page.");
-        setIsJoining(false);
-      });
+    setConnectionStatus("Reconnecting...");
+    
+    try {
+      await connect(actualCode);
+      
+      // Wait for connection to stabilize
+      setTimeout(() => {
+        if (getReadyState() === WebSocket.OPEN) {
+          joinRoom(actualCode);
+          setConnectionStatus("Rejoining room...");
+        } else {
+          setError("Reconnection failed");
+          setConnectionStatus("Failed");
+          setIsJoining(false);
+        }
+      }, 500);
+    } catch (err) {
+      setError("Reconnection failed");
+      setConnectionStatus("Error");
+      setIsJoining(false);
+    }
   };
 
   return (
@@ -165,6 +219,7 @@ const AuctionRoom = () => {
         <div className="mb-4 text-sm text-gray-400">
           <p>Room Code: <span className="font-mono text-white">{actualCode}</span></p>
           <p>Team: <span className="text-blue-400">{teamName}</span></p>
+          <p className="mt-2 text-xs text-yellow-300">{connectionStatus}</p>
         </div>
 
         {error ? (
@@ -176,7 +231,7 @@ const AuctionRoom = () => {
                 onClick={handleRetry}
                 className="w-full bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition-colors"
               >
-                Try Again
+                Reconnect Now
               </button>
               <button
                 onClick={() => window.location.reload()}
@@ -189,33 +244,34 @@ const AuctionRoom = () => {
         ) : isJoining ? (
           <div className="text-blue-400">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-4"></div>
-            <p className="text-lg mb-2">Joining Room...</p>
-            <p className="text-sm">Connecting to auction server...</p>
+            <p className="text-lg mb-2">Joining Auction Room...</p>
+            <p className="text-sm">{connectionStatus}</p>
           </div>
         ) : size !== null ? (
           <div className="space-y-4">
             <div className="text-green-400">
-              <p className="text-lg mb-2">✅ Connected!</p>
+              <p className="text-lg mb-2">✅ Successfully Joined!</p>
               <div className="bg-green-900/20 border border-green-500/30 rounded p-4 mb-4">
-                <p className="text-2xl font-bold text-white">{size}</p>
+                <p className="text-2xl font-bold text-white">{size/2}</p>
                 <p className="text-sm">Player{size !== 1 ? 's' : ''} in room</p>
               </div>
             </div>
 
             <button
               onClick={handleProceed}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
             >
-              Proceed to Retentions →
+              Proceed to Player Auction →
             </button>
 
-            <p className="text-xs text-gray-500">
-              Room updates in real-time as players join or leave
+            <p className="text-xs text-gray-500 mt-4">
+              Tip: Keep this window open until auction completion
             </p>
           </div>
         ) : (
           <div className="text-yellow-400">
-            <p>Loading room information...</p>
+            <div className="animate-pulse">⏳</div>
+            <p>Finalizing room setup...</p>
           </div>
         )}
       </div>
