@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
+import initialTeams from "../initialTeams";
 
 export default function AuctionPage() {
   const params = useParams();
@@ -8,6 +9,15 @@ export default function AuctionPage() {
 
   const roomId = fullParam.slice(0, 5);
   const teamName = fullParam.slice(5);
+  const [Budget, setBudget] = useState(0);
+
+  // FIX: Move the team finding logic inside useEffect to avoid state updates during render
+  useEffect(() => {
+    const team = initialTeams.find(t => t.code === teamName);
+    if (team) {
+      setBudget(team.initalBudget);
+    }
+  }, [teamName]); // Run when teamName changes
 
   const [currentBid, setCurrentBid] = useState(2.0);
   const [timer, setTimer] = useState(45);
@@ -32,6 +42,7 @@ export default function AuctionPage() {
   const [roomSize, setRoomSize] = useState(0);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
+
   
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -224,7 +235,7 @@ export default function AuctionPage() {
         <div className="text-right">
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-3 border border-white/20">
             <div className="text-orange-400 font-semibold text-lg">Your Team: {teamName}</div>
-            <div className="text-white">Budget: ₹45.5 Cr</div>
+            <div className="text-white">Budget: ₹{Budget} Cr</div>
             <div className="text-gray-400 text-sm">
               Room ID: <span className="font-semibold text-white">#{roomId}</span>
             </div>
