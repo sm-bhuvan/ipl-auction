@@ -3,37 +3,35 @@ import { NextResponse } from 'next/server'
 export function middleware(request) {
   const { pathname } = request.nextUrl
   const referer = request.headers.get('referer')
+  const isInternalNav = request.cookies.get('internal-nav')?.value === 'true'
 
-  // Define URL paths that should redirect to homepage (including all sub-paths)
-  const redirectPaths = ['/auctionroom', '/Mainroom', '/dashboard']
+  // Define protected paths
+  const protectedPaths = ['/auctionroom', '/Mainroom', '/dashboard']
+  const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path))
 
-  // Check if current pathname starts with any redirect path
-  const shouldRedirect = redirectPaths.some(path => pathname.startsWith(path))
-  
-  if (shouldRedirect) {
-    // Allow if request comes from same site (internal navigation)
-    if (referer && referer.startsWith(request.nextUrl.origin)) {
-      return NextResponse.next()
+  if (isProtectedPath) {
+    // Allow if:
+    // 1. Coming from same origin (referer matches), OR
+    // 2. Has internal-nav cookie (refresh or internal redirect)
+    if (referer?.startsWith(request.nextUrl.origin) || isInternalNav) {
+      // Set cookie for subsequent requests (like refreshes)
+      const response = NextResponse.next()
+      response.cookies.set('internal-nav', 'true', { sameSite: 'strict', path: '/' })
+      return response
     }
-    
-    // Redirect to homepage if manually typed or from external source
+
+    // Redirect to homepage for direct access or external referrers
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Continue with the request if no redirect is needed
-  return NextResponse.next()
+  // Clear the cookie if not on a protected path
+  const response = NextResponse.next()
+  response.cookies.delete('internal-nav')
+  return response
 }
 
-// Configure which paths the middleware should run on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }
