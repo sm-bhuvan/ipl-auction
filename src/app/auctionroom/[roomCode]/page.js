@@ -254,7 +254,7 @@ const AuctionRoom = () => {
             <div className="text-green-400">
               <p className="text-lg mb-2">✅ Successfully Joined!</p>
               <div className="bg-green-900/20 border border-green-500/30 rounded p-4 mb-4">
-                <p className="text-2xl font-bold text-white">{size/2}</p>
+                <p className="text-2xl font-bold text-white">{Math.floor(size/2)}</p>
                 <p className="text-sm">Player{size !== 1 ? 's' : ''} in room</p>
               </div>
             </div>
