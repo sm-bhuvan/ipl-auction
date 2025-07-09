@@ -281,42 +281,19 @@ export default function AuctionPage() {
 
   return (
     (!main) ?
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-orange-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="max-w-4xl w-full">
-          <div className="text-center mb-8">
-            <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-100">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">⏱️</span>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-black bg-gradient-to-r from-yellow-600 via-orange-500 to-blue-600 bg-clip-text text-transparent">
-                    IPL MEGA AUCTION 2025
-                  </h1>
-                  <p className="text-gray-600 text-sm mt-1">Auction starts in</p>
-                </div>
-              </div>
-
-              <div className="relative mb-6">
-                <div className="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full shadow-lg mb-4">
-                  <span className="text-6xl font-black text-white">
-                    {countdown}
-                  </span>
-                </div>
-                <div className="absolute inset-0 w-32 h-32 mx-auto rounded-full border-4 border-yellow-300/50 animate-pulse"></div>
-              </div>
-
-              <div className="text-gray-800 text-xl font-bold mb-2">
-                {countdown > 1 ? 'seconds' : 'second'}
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-gray-600">
-                <span className="text-sm">Get ready for the biggest auction in IPL history!</span>
-              </div>
+      <div className="relative">
+        <Rulesandretention />
+        <div className="absolute top-4 right-4 z-10">
+          <div className="flex items-center space-x-2 bg-black/80 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
+            <span className="text-xs font-medium text-white/90">
+              Auction Starts in:
+            </span>
+            <div className="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full shadow-md">
+              <span className="text-xs font-bold text-white">
+                {countdown}
+              </span>
             </div>
           </div>
-
-          <Rulesandretention />
         </div>
       </div> :
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
@@ -486,8 +463,8 @@ export default function AuctionPage() {
                             onClick={handleBid}
                             disabled={!connected || sold || (currentBid + 0.5) > Budget || highestBidder === teamName}
                             className={`w-full font-bold py-4 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg text-lg ${connected && !sold && (currentBid + 0.5) <= Budget && highestBidder !== teamName
-                                ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white hover:shadow-xl'
-                                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white hover:shadow-xl'
+                              : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                               }`}
                           >
                             {!connected ? '🔌 Connecting...' :

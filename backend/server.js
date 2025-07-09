@@ -102,34 +102,6 @@ const players = [
   }
 ];
 
-// Enhanced room initialization
-const initializeRoom = (roomId) => {
-  if (!roomData[roomId]) {
-    roomData[roomId] = {
-      teams: [...initialTeams],
-      selectedTeams: [],
-      teamBudgets: {}, // Track individual team budgets
-      soldPlayers: [], // Track sold players
-      players: [...players],
-      currentPlayerIndex: 0,
-      currentPlayer: players[0],
-      currentBid: players[0].basePrice,
-      highestBidder: null,
-      biddingHistory: [],
-      timer: 45,
-      isActive: true,
-      sold: false,
-      auctionStarted: false,
-      totalParticipants: 0
-    };
-    
-    // Initialize team budgets
-    initialTeams.forEach(team => {
-      roomData[roomId].teamBudgets[team.code] = team.initialBudget;
-    });
-  }
-};
-
 // Improved cleanup function
 const cleanupRoom = (roomId) => {
   if (rooms[roomId] && rooms[roomId].length === 0) {
@@ -139,7 +111,7 @@ const cleanupRoom = (roomId) => {
   }
 };
 
-// Enhanced client removal with better error handling
+// Enhanced client removal with error handling
 const removeClientFromRoom = (ws) => {
   if (!ws.roomId || !rooms[ws.roomId]) return null;
 
@@ -148,7 +120,7 @@ const removeClientFromRoom = (ws) => {
     rooms[ws.roomId] = rooms[ws.roomId].filter(client => client !== ws);
     const newSize = rooms[ws.roomId].length;
     
-    // Update room data
+    // Only remove from selectedTeams if no other client with same team name exists
     if (roomData[ws.roomId] && ws.teamName) {
       const hasOtherClientWithSameTeam = rooms[ws.roomId].some(client => 
         client.teamName === ws.teamName && client.readyState === WebSocket.OPEN
@@ -158,7 +130,6 @@ const removeClientFromRoom = (ws) => {
         roomData[ws.roomId].selectedTeams = roomData[ws.roomId].selectedTeams.filter(
           team => team.code !== ws.teamName
         );
-        roomData[ws.roomId].totalParticipants--;
       }
     }
     
@@ -167,7 +138,6 @@ const removeClientFromRoom = (ws) => {
         type: "member_left", 
         room: ws.roomId, 
         size: newSize,
-        totalParticipants: roomData[ws.roomId]?.totalParticipants || 0,
         selectedTeams: roomData[ws.roomId]?.selectedTeams || []
       });
     }
@@ -195,8 +165,6 @@ const broadcastToRoom = (roomId, message, excludeWs = null) => {
       }
     } catch (err) {
       console.error("Broadcast error:", err);
-      // Remove failed client
-      removeClientFromRoom(client);
     }
   });
 };
@@ -212,7 +180,7 @@ const validateBid = (roomId, teamCode, amount) => {
     return { valid: false, reason: "Bid must be higher than current bid" };
   }
   
-  if (room.teamBudgets[teamCode] < amount) {
+  if (room.teamBudgets && room.teamBudgets[teamCode] < amount) {
     return { valid: false, reason: "Insufficient budget" };
   }
   
@@ -231,11 +199,12 @@ const handlePlayerSold = (roomId) => {
   const finalBid = room.currentBid;
   
   // Deduct budget if there's a winner
-  if (winningTeam) {
+  if (winningTeam && room.teamBudgets) {
     room.teamBudgets[winningTeam] -= finalBid;
   }
   
   // Add to sold players
+  if (!room.soldPlayers) room.soldPlayers = [];
   room.soldPlayers.push({
     player: room.currentPlayer,
     team: winningTeam,
@@ -249,7 +218,7 @@ const handlePlayerSold = (roomId) => {
     player: room.currentPlayer,
     finalBid: finalBid,
     winningTeam: winningTeam,
-    updatedBudgets: room.teamBudgets
+    updatedBudgets: room.teamBudgets || {}
   });
   
   // Move to next player after delay
@@ -293,7 +262,7 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
-      console.log("Received:", data.type, data);
+      console.log("Received:", data.type);
 
       switch (data.type) {
         case "join":
@@ -307,20 +276,42 @@ wss.on("connection", (ws) => {
           // Remove from previous room
           removeClientFromRoom(ws);
 
-          // Initialize room if needed
+          // Initialize new room
           if (!rooms[data.room]) {
             rooms[data.room] = [];
-            initializeRoom(data.room);
+            roomData[data.room] = {
+              teams: [...initialTeams],
+              selectedTeams: [],
+              teamBudgets: {}, // Track individual team budgets
+              soldPlayers: [], // Track sold players
+              players: [...players],
+              currentPlayerIndex: 0,
+              currentPlayer: players[0],
+              currentBid: players[0].basePrice,
+              highestBidder: null,
+              biddingHistory: [],
+              timer: 45,
+              isActive: true,
+              sold: false
+            };
+            
+            // Initialize team budgets
+            initialTeams.forEach(team => {
+              roomData[data.room].teamBudgets[team.code] = team.initialBudget;
+            });
+            
             console.log(`Created room ${data.room}`);
           }
 
-          // Check for existing connection with same team
+          // Check if this WebSocket is already in the room
           const existingConnection = rooms[data.room].find(client => 
             client.teamName === data.teamName && client.readyState === WebSocket.OPEN
           );
           
           if (existingConnection) {
+            // Remove the old connection
             rooms[data.room] = rooms[data.room].filter(client => client !== existingConnection);
+            // Remove from selectedTeams
             roomData[data.room].selectedTeams = roomData[data.room].selectedTeams.filter(
               team => team.code !== data.teamName
             );
@@ -331,19 +322,22 @@ wss.on("connection", (ws) => {
           ws.roomId = data.room;
           ws.teamName = data.teamName || null;
           
-          // Add team to selectedTeams
+          // Add team to selectedTeams when joining (only once per team)
           if (data.teamName) {
             const existingTeam = roomData[data.room].selectedTeams.find(t => t.code === data.teamName);
             if (!existingTeam) {
-              const teamInfo = initialTeams.find(t => t.code === data.teamName);
-              if (teamInfo) {
-                roomData[data.room].selectedTeams.push({
-                  ...teamInfo,
-                  selectedAt: new Date().toISOString(),
-                  selectedBy: data.teamName
-                });
-                roomData[data.room].totalParticipants++;
-              }
+              const teamInfo = initialTeams.find(t => t.code === data.teamName) || {
+                name: data.teamName,
+                code: data.teamName,
+                color: "from-gray-500 to-gray-700",
+                logo: "🏏"
+              };
+              
+              roomData[data.room].selectedTeams.push({
+                ...teamInfo,
+                selectedAt: new Date().toISOString(),
+                selectedBy: data.teamName
+              });
             }
           }
           
@@ -353,7 +347,6 @@ wss.on("connection", (ws) => {
             type: "joined", 
             room: data.room, 
             size: roomSize,
-            totalParticipants: roomData[data.room].totalParticipants,
             teams: roomData[data.room].teams,
             selectedTeams: roomData[data.room].selectedTeams,
             currentPlayer: roomData[data.room].currentPlayer,
@@ -368,11 +361,69 @@ wss.on("connection", (ws) => {
             type: "member_joined", 
             room: data.room, 
             size: roomSize,
-            totalParticipants: roomData[data.room].totalParticipants,
             selectedTeams: roomData[data.room].selectedTeams
           }, ws);
           
           console.log(`Client joined ${data.room} as ${data.teamName} (size: ${roomSize})`);
+          break;
+
+        case "select_team":
+          if (!ws.roomId || !roomData[ws.roomId]) {
+            return ws.send(JSON.stringify({ 
+              type: "error", 
+              message: "Join a room first" 
+            }));
+          }
+
+          const { teamCode } = data;
+          const teamIndex = roomData[ws.roomId].teams.findIndex(t => t.code === teamCode);
+          if (teamIndex === -1) {
+            return ws.send(JSON.stringify({ 
+              type: "error", 
+              message: "Team unavailable" 
+            }));
+          }
+
+          const selectedTeam = roomData[ws.roomId].teams.splice(teamIndex, 1)[0];
+          roomData[ws.roomId].selectedTeams.push({
+            ...selectedTeam,
+            selectedAt: new Date().toISOString(),
+            selectedBy: ws.teamName || "Unknown"
+          });
+
+          broadcastToRoom(ws.roomId, {
+            type: "team_selected",
+            room: ws.roomId,
+            team: selectedTeam,
+            availableTeams: roomData[ws.roomId].teams,
+            selectedTeams: roomData[ws.roomId].selectedTeams
+          });
+
+          ws.send(JSON.stringify({
+            type: "team_selected_success",
+            room: ws.roomId,
+            team: selectedTeam
+          }));
+          break;
+
+        case "get_teams":
+          if (!data.room || !roomData[data.room]) {
+            return ws.send(JSON.stringify({ 
+              type: "error", 
+              message: "Invalid room" 
+            }));
+          }
+          
+          ws.send(JSON.stringify({ 
+            type: "teams_list", 
+            room: data.room, 
+            selectedTeams: roomData[data.room].selectedTeams,
+            availableTeams: roomData[data.room].teams,
+            currentPlayer: roomData[data.room].currentPlayer,
+            currentBid: roomData[data.room].currentBid,
+            biddingHistory: roomData[data.room].biddingHistory,
+            timer: roomData[data.room].timer
+          }));
           break;
 
         case "new_bid":
@@ -432,8 +483,8 @@ wss.on("connection", (ws) => {
           console.log(`New bid in room ${ws.roomId}: ${team} - ₹${amount} Cr`);
           break;
 
-        case "get_room_status":
-          if (!data.room || !roomData[data.room]) {
+        case "getsize":
+          if (!data.room || !rooms[data.room]) {
             return ws.send(JSON.stringify({ 
               type: "error", 
               message: "Invalid room" 
@@ -441,9 +492,11 @@ wss.on("connection", (ws) => {
           }
           
           ws.send(JSON.stringify({ 
-            type: "room_status", 
-            room: data.room,
-            ...roomData[data.room]
+            type: "size", 
+            room: data.room, 
+            size: rooms[data.room].length,
+            teams: roomData[data.room]?.teams || [],
+            selectedTeams: roomData[data.room]?.selectedTeams || []
           }));
           break;
 
