@@ -178,12 +178,7 @@ const AuctionRoom = () => {
     };
   }, [actualCode, leaveRoom, getReadyState]);
 
-  const handleProceed = () => {
-    if (getReadyState() === WebSocket.OPEN) {
-      leaveRoom(actualCode);
-    }
-    router.push(`/Teamdetails/${teamName}`);
-  };
+  
 
   const handleRetry = async () => {
     setError(null);
@@ -260,10 +255,10 @@ const AuctionRoom = () => {
             </div>
 
             <button
-              onClick={handleProceed}
+            disabled={true}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
             >
-              Proceed to Player Auction →
+              Wait Till 10 Users Join
             </button>
 
             <p className="text-xs text-gray-500 mt-4">

@@ -39,7 +39,7 @@ export default function Dashboard() {
             {/* Create Server Button */}
             <Button
               onClick={handleCreateServer}
-              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25"
+              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25 cursor-pointer"
             >
               <Server className="mr-3 h-5 w-5" />
               Create Server
@@ -48,7 +48,7 @@ export default function Dashboard() {
             {/* Join Server Button */}
             <Button
               onClick={handleJoinServer}
-              className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25"
+              className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 cursor-pointer"
             >
               <Users className="mr-3 h-5 w-5" />
               Join Server
@@ -58,7 +58,7 @@ export default function Dashboard() {
             <Button
               onClick={handleLogout}
               variant="outline"
-              className="w-full h-14 bg-red-600 text-white border-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-red-500/25"
+              className="w-full h-14 bg-red-600 text-white border-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 font-semibold text-lg rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-red-500/25 cursor-pointer"
             >
               <LogOut className="mr-3 h-5 w-5" />
               Logout
