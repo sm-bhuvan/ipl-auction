@@ -40,77 +40,154 @@ fetchPlayersFromMongo();
 function createInitialSquad() {
   return {
     "MI": {
-      "Batter": ["Rohit Sharma", "Suryakumar Yadav", "Tilak Varma"],
-      "Bowler": ["Jasprit Bumrah"],
-      "All-Rounder": ["Hardik Pandya"],
+      "Batter": [
+        { name: "Rohit Sharma", overseas: false },
+        { name: "Suryakumar Yadav", overseas: false },
+        { name: "Tilak Varma", overseas: false }
+      ],
+      "Bowler": [
+        { name: "Jasprit Bumrah", overseas: false }
+      ],
+      "All-Rounder": [
+        { name: "Hardik Pandya", overseas: false }
+      ],
       "Wicketkeeper-Batter": [],
       "Wicketkeeper": []
     },
     "CSK": {
-      "Batter": ["Ruturaj Gaikwad"],
-      "Bowler": ["Matheesha Pathirana"],
-      "All-Rounder": ["Ravindra Jadeja", "Shivam Dube"],
+      "Batter": [
+        { name: "Ruturaj Gaikwad", overseas: false }
+      ],
+      "Bowler": [
+        { name: "Matheesha Pathirana", overseas: true }
+      ],
+      "All-Rounder": [
+        { name: "Ravindra Jadeja", overseas: false },
+        { name: "Shivam Dube", overseas: false }
+      ],
       "Wicketkeeper-Batter": [],
-      "Wicketkeeper": ["MS Dhoni"]
+      "Wicketkeeper": [
+        { name: "MS Dhoni", overseas: false }
+      ]
     },
     "RCB": {
-      "Batter": ["Virat Kohli", "Rajat Patidar"],
-      "Bowler": ["Yash Dayal"],
+      "Batter": [
+        { name: "Virat Kohli", overseas: false },
+        { name: "Rajat Patidar", overseas: false }
+      ],
+      "Bowler": [
+        { name: "Yash Dayal", overseas: false }
+      ],
       "All-Rounder": [],
       "Wicketkeeper-Batter": [],
       "Wicketkeeper": []
     },
     "KKR": {
-      "Batter": ["Rinku Singh", "Sunil Narine"],
-      "Bowler": ["Varun Chakaravarthy", "Harshit Rana"],
-      "All-Rounder": ["Andre Russell","Ramandeep Singh"],
+      "Batter": [
+        { name: "Rinku Singh", overseas: false },
+        { name: "Sunil Narine", overseas: true }
+      ],
+      "Bowler": [
+        { name: "Varun Chakaravarthy", overseas: false },
+        { name: "Harshit Rana", overseas: false }
+      ],
+      "All-Rounder": [
+        { name: "Andre Russell", overseas: true },
+        { name: "Ramandeep Singh", overseas: false }
+      ],
       "Wicketkeeper-Batter": [],
       "Wicketkeeper": []
     },
     "DC": {
       "Batter": [],
-      "Bowler": ["Kuldeep Yadav"],
-      "All-Rounder": ["Axar Patel", "Tristan Stubbs"],
-      "Wicketkeeper-Batter": ["Abhishek Porel"],
+      "Bowler": [
+        { name: "Kuldeep Yadav", overseas: false }
+      ],
+      "All-Rounder": [
+        { name: "Axar Patel", overseas: false },
+        { name: "Tristan Stubbs", overseas: true }
+      ],
+      "Wicketkeeper-Batter": [
+        { name: "Abhishek Porel", overseas: false }
+      ],
       "Wicketkeeper": []
     },
     "PBKS": {
-      "Batter": ["Shashank Singh"],
+      "Batter": [
+        { name: "Shashank Singh", overseas: false }
+      ],
       "Bowler": [],
       "All-Rounder": [],
-      "Wicketkeeper-Batter": ["Prabhsimran Singh"],
+      "Wicketkeeper-Batter": [
+        { name: "Prabhsimran Singh", overseas: false }
+      ],
       "Wicketkeeper": []
     },
     "RR": {
-      "Batter": ["Yashasvi Jaiswal", "Shimron Hetmyer"],
-      "Bowler": ["Sandeep Sharma"],
-      "All-Rounder": ["Riyan Parag"],
-      "Wicketkeeper-Batter": ["Sanju Samson", "Dhruv Jurel"],
+      "Batter": [
+        { name: "Yashasvi Jaiswal", overseas: false },
+        { name: "Shimron Hetmyer", overseas: true }
+      ],
+      "Bowler": [
+        { name: "Sandeep Sharma", overseas: false }
+      ],
+      "All-Rounder": [
+        { name: "Riyan Parag", overseas: false }
+      ],
+      "Wicketkeeper-Batter": [
+        { name: "Sanju Samson", overseas: false },
+        { name: "Dhruv Jurel", overseas: false }
+      ],
       "Wicketkeeper": []
     },
     "SRH": {
-      "Batter": ["Travis Head", "Nitish Kumar Reddy"],
+      "Batter": [
+        { name: "Travis Head", overseas: true },
+        { name: "Nitish Kumar Reddy", overseas: false }
+      ],
       "Bowler": [],
-      "All-Rounder": ["Abhishek Sharma", "Pat Cummins"],
-      "Wicketkeeper-Batter": ["Heinrich Klaasen"],
+      "All-Rounder": [
+        { name: "Abhishek Sharma", overseas: false },
+        { name: "Pat Cummins", overseas: true }
+      ],
+      "Wicketkeeper-Batter": [
+        { name: "Heinrich Klaasen", overseas: true }
+      ],
       "Wicketkeeper": []
     },
     "GT": {
-      "Batter": ["Shubman Gill", "Sai Sudharsan"],
-      "Bowler": ["Rashid Khan"],
-      "All-Rounder": ["Rahul Tewatia", "Shahrukh Khan"],
+      "Batter": [
+        { name: "Shubman Gill", overseas: false },
+        { name: "Sai Sudharsan", overseas: false }
+      ],
+      "Bowler": [
+        { name: "Rashid Khan", overseas: true }
+      ],
+      "All-Rounder": [
+        { name: "Rahul Tewatia", overseas: false },
+        { name: "Shahrukh Khan", overseas: false }
+      ],
       "Wicketkeeper-Batter": [],
       "Wicketkeeper": []
     },
     "LSG": {
-      "Batter": ["Ayush Badoni"],
-      "Bowler": ["Ravi Bishnoi", "Mayank Yadav", "Mohsin Khan"],
+      "Batter": [
+        { name: "Ayush Badoni", overseas: false }
+      ],
+      "Bowler": [
+        { name: "Ravi Bishnoi", overseas: false },
+        { name: "Mayank Yadav", overseas: false },
+        { name: "Mohsin Khan", overseas: false }
+      ],
       "All-Rounder": [],
-      "Wicketkeeper-Batter": ["Nicholas Pooran"],
+      "Wicketkeeper-Batter": [
+        { name: "Nicholas Pooran", overseas: true }
+      ],
       "Wicketkeeper": []
     }
   };
 }
+
 
 const initialTeams = [
   { name: "Mumbai Indians", code: "MI", color: "from-blue-600 to-blue-800", logo: "🏏", initialBudget: 45 },
@@ -205,6 +282,18 @@ const validateBid = (roomId, teamCode, amount) => {
   if (room.teamBudgets && room.teamBudgets[teamCode] < amount) {
     return { valid: false, reason: "Insufficient budget" };
   }
+  if (room.currentPlayer.Nationality !== "India") {
+    const teamSquad = room.squads[teamCode];
+    let overseasCount = 0;
+
+    for (const role in teamSquad) {
+      overseasCount += teamSquad[role].filter(p => p.overseas).length;
+    }
+
+    if (overseasCount >= 8) {
+      return { valid: false, reason: "Maximum overseas players (8) reached" };
+    }
+  }
 
   return { valid: true };
 };
@@ -218,7 +307,11 @@ const handlePlayerSold = (roomId) => {
   const finalBid = room.currentBid;
   const role = room.currentPlayer.Role
   if (finalBid != 0) {
-    room.squads[winningTeam][role].push(soldPlayer["Player Name"]);
+    const overseas = room.currentPlayer.Nationality !== "India";
+    room.squads[winningTeam][role].push({
+      name: soldPlayer["Player Name"],
+      overseas: overseas
+    });
     room.unsoldPlayerSet.delete(soldPlayer);
   }
   if (room.players[room.currentSetIndex].length > 0) {

@@ -18,8 +18,8 @@ export default function AuctionPage() {
     // Ensure amount is a number and fix floating point precision
     const numAmount = Number(amount);
     if (isNaN(numAmount)) {
-    return "₹0 L"; // Default value for invalid amounts
-  }
+      return "₹0 L"; // Default value for invalid amounts
+    }
     const fixedAmount = parseFloat(numAmount.toFixed(2));
 
     // Format as Lakhs or Crores
@@ -315,45 +315,64 @@ export default function AuctionPage() {
   // Calculate values for display using consistent formatting
   const nextBid = calculateNextBid();
   const nextBidDisplay = formatPrice(nextBid);
-  
+
   // Convert base price from lakhs to crores for consistent display
-  const basePriceInCrores = currentPlayer["Base Price (Rs Lakh)"] ? 
+  const basePriceInCrores = currentPlayer["Base Price (Rs Lakh)"] ?
     (currentPlayer["Base Price (Rs Lakh)"] / 100) : 0;
   const basePriceDisplay = formatPrice(basePriceInCrores);
+  const myTeamSquad = squads[teamName] || {};
+  let overseasCount = 0;
 
+  Object.values(myTeamSquad).forEach(players => {
+    players.forEach(player => {
+      if (player.overseas) overseasCount++;
+    });
+  });
+
+  const currentPlayerOverseas = currentPlayer?.Nationality !== "India";
+  const overseasLimitReached = currentPlayerOverseas && overseasCount >= 8;
+
+  // Then use it in your bid button's disabled prop
+  const bidButtonDisabled = !connected || sold || nextBid > Budget || highestBidder === teamName || overseasLimitReached;
   // Helper function to render squad details
   const renderSquadDetails = (teamCode) => {
     if (!squads[teamCode]) return null;
 
     const teamSquad = squads[teamCode];
     const roleOrder = ["Batter", "Bowler", "All-Rounder", "Wicketkeeper-Batter", "Wicketkeeper"];
-
+    // Calculate overseas count for the current team
     return (
-      <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-        {roleOrder.map(role => {
-          const players = teamSquad[role] || [];
-          if (players.length === 0) return null;
+      <div className="max-h-[50vh] min-w-[250px] w-auto overflow-x-auto overflow-y-hidden">
+        <div className="flex flex-col space-y-3" style={{ minWidth: "fit-content" }}>
+          {roleOrder.map(role => {
+            const players = teamSquad[role] || [];
+            if (players.length === 0) return null;
 
-          return (
-            <div key={role} className="space-y-1">
-              <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
-                {role === "Wicketkeeper-Batter" ? "WK-Batter" : role}
+            return (
+              <div key={role} className="space-y-1">
+                <div className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
+                  {role === "Wicketkeeper-Batter" ? "WK-Batter" : role}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {players.map((player, idx) => (
+                    <div
+                      key={idx}
+                      className="text-sm text-white px-2 py-1 bg-white/5 rounded flex items-center gap-2"
+                    >
+                      <span>{player.name}</span>
+                      {player.overseas && <span className="text-blue-300 text-xs">✈️</span>}
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-1">
-                {players.map((player, idx) => (
-                  <div key={idx} className="text-sm text-white pl-2 py-1 bg-white/5 rounded">
-                    {player}
-                  </div>
-                ))}
-              </div>
+            );
+          })}
+          {roleOrder.every(role => !teamSquad[role] || teamSquad[role].length === 0) && (
+            <div className="text-gray-400 text-sm text-center italic">
+              No players bought yet
             </div>
-          );
-        })}
-        {roleOrder.every(role => !teamSquad[role] || teamSquad[role].length === 0) && (
-          <div className="text-gray-400 text-sm text-center italic">
-            No players bought yet
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
@@ -498,6 +517,7 @@ export default function AuctionPage() {
 
               <div className="p-4 md:p-6 bg-white/5 border-b border-white/20">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                  {/* Common stat for all roles */}
                   <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
                     <p className="text-xl md:text-2xl font-bold text-white">
                       {currentPlayer["Matches in IPL"] || '0'}
@@ -505,42 +525,8 @@ export default function AuctionPage() {
                     <p className="text-xs md:text-sm text-gray-400">Matches</p>
                   </div>
 
-                  {currentPlayer["Role"]?.includes("Bowler") ? (
-                    <>
-                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
-                        <p className="text-xl md:text-2xl font-bold text-white">
-                          {currentPlayer["Wickets"] || 'N/A'}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-400">Wickets</p>
-                      </div>
-                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
-                        <p className="text-xl md:text-2xl font-bold text-white">
-                          {currentPlayer["Bowling Avg"] || 'N/A'}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-400">Avg</p>
-                      </div>
-                    </>
-                  ) : null}
-
-                  {currentPlayer["Role"] === "All-Rounder" ? (
-                    <>
-                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
-                        <p className="text-xl md:text-2xl font-bold text-white">
-                          {currentPlayer["Runs"] || 'N/A'}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-400">Runs</p>
-                      </div>
-                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
-                        <p className="text-xl md:text-2xl font-bold text-white">
-                          {currentPlayer["Wickets"] || 'N/A'}
-                        </p>
-                        <p className="text-xs md:text-sm text-gray-400">Wickets</p>
-                      </div>
-                    </>
-                  ) : null}
-
-                  {currentPlayer["Role"]?.includes("Batter") ||
-                    currentPlayer["Role"]?.includes("Wicketkeeper") ? (
+                  {/* Batter/Wicketkeeper specific stats */}
+                  {(currentPlayer["Role"]?.includes("Batter") || currentPlayer["Role"]?.includes("Wicketkeeper")) && (
                     <>
                       <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
                         <p className="text-xl md:text-2xl font-bold text-white">
@@ -554,15 +540,68 @@ export default function AuctionPage() {
                         </p>
                         <p className="text-xs md:text-sm text-gray-400">Avg</p>
                       </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Strike Rate"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">SR</p>
+                      </div>
                     </>
-                  ) : null}
+                  )}
 
-                  <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
-                    <p className="text-xl md:text-2xl font-bold text-white">
-                      {currentPlayer["Strike Rate"] || 'N/A'}
-                    </p>
-                    <p className="text-xs md:text-sm text-gray-400">SR</p>
-                  </div>
+                  {/* Bowler specific stats */}
+                  {currentPlayer["Role"]?.includes("Bowler") && !currentPlayer["Role"]?.includes("All-Rounder") && (
+                    <>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Wickets"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Wickets</p>
+                      </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Bowling Avg"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Avg</p>
+                      </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Economy"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Econ</p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* All-Rounder specific stats */}
+                  {currentPlayer["Role"] === "All-Rounder" && (
+                    <>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Runs"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Runs</p>
+                      </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Wickets"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Wickets</p>
+                      </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Economy"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Econ</p>
+                      </div>
+                      <div className="text-center p-2 md:p-3 bg-white/10 rounded-lg border border-white/20">
+                        <p className="text-xl md:text-2xl font-bold text-white">
+                          {currentPlayer["Strike Rate"] || 'N/A'}
+                        </p>
+                        <p className="text-xs md:text-sm text-gray-400">Batting SR</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -578,21 +617,30 @@ export default function AuctionPage() {
                     <TimerandStatus timer={timer} />
 
                     {sold ? (
-                      <div className="text-center mb-4 md:mb-6">
-                        <div className="bg-gradient-to-r from-green-600 to-green-500 inline-block px-6 py-2 md:px-8 md:py-3 rounded-full text-white font-bold text-lg md:text-xl shadow-lg">
-                          👑 SOLD!
-                        </div>
-                        {winningTeam ? (
-                          <div className="mt-2">
-                            <p className="text-gray-300">
-                              Won by <span className="font-bold text-white">{winningTeam}</span>
-                            </p>
-                            <p className="text-green-400 font-semibold">
-                              Final Price: {formatPrice(finalBid)}
-                            </p>
+                      finalBid === 0 ? (
+                        <div className="text-center mb-4 md:mb-6">
+                          <div className="bg-gradient-to-r from-red-600 to-red-500 inline-block px-6 py-2 md:px-8 md:py-3 rounded-full text-white font-bold text-lg md:text-xl shadow-lg">
+                            UNSOLD!
                           </div>
-                        ) : null}
-                      </div>
+                          <p className="text-gray-400 mt-2">You cannot buy this player later!</p>
+                        </div>
+                      ) : (
+                        <div className="text-center mb-4 md:mb-6">
+                          <div className="bg-gradient-to-r from-green-600 to-green-500 inline-block px-6 py-2 md:px-8 md:py-3 rounded-full text-white font-bold text-lg md:text-xl shadow-lg">
+                            👑 SOLD!
+                          </div>
+                          {winningTeam && (
+                            <div className="mt-2">
+                              <p className="text-gray-300">
+                                Won by <span className="font-bold text-white">{winningTeam}</span>
+                              </p>
+                              <p className="text-green-400 font-semibold">
+                                Final Price: {formatPrice(finalBid)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )
                     ) : (
                       <div className="text-center mb-4 md:mb-6">
                         <div className="bg-gradient-to-r from-blue-600 to-blue-500 inline-block px-6 py-2 md:px-8 md:py-3 rounded-full text-white font-bold text-lg md:text-xl shadow-lg animate-pulse">
@@ -616,22 +664,25 @@ export default function AuctionPage() {
                           </div>
                           <button
                             onClick={handleBid}
-                            disabled={!connected || sold || nextBid > Budget || highestBidder === teamName}
-                            className={`w-full py-2 md:py-3 px-4 md:px-6 rounded-lg font-bold text-base md:text-lg transition-all duration-200 ${!connected || sold || nextBid > Budget || highestBidder === teamName
+                            disabled={bidButtonDisabled}
+                            className={`w-full py-2 md:py-3 px-4 md:px-6 rounded-lg font-bold text-base md:text-lg transition-all duration-200 ${bidButtonDisabled
                               ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                               : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 hover:scale-105 shadow-lg'
                               }`}
+                            title={overseasLimitReached ? "Cannot buy more than 8 overseas players" : ""}
                           >
                             {!connected ? '🔌 Connecting...' :
                               sold ? '🚫 Sold' :
                                 highestBidder === teamName ? '🏆 Your Highest Bid' :
-                                  nextBid > Budget ? `💸 Insufficient Budget` :
-                                    currentBid === 0 ? `⚡ START BIDDING` :
-                                      `⚡ BID`}
+                                  nextBid > Budget ? '💸 Insufficient Budget' :
+                                    overseasLimitReached ? '🌍 Overseas Limit' :
+                                      currentBid === 0 ? '⚡ START BIDDING' :
+                                        '⚡ BID'}
                           </button>
-                          <p className="text-xs text-gray-400 mt-2">
-                            Budget remaining: {formatPrice(Budget)}
-                          </p>
+                          <div className="text-xs text-gray-400 mt-2">
+                            Budget: {formatPrice(Budget)} • Overseas: {overseasCount}/8
+                            {overseasLimitReached && " (Limit Reached)"}
+                          </div>
                         </div>
                       </div>
                     )}
