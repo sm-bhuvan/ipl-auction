@@ -36,6 +36,82 @@ async function fetchPlayersFromMongo() {
 
 fetchPlayersFromMongo();
 
+// Move squad inside a function to create separate instances
+function createInitialSquad() {
+  return {
+    "MI": {
+      "Batter": ["Rohit Sharma", "Suryakumar Yadav", "Tilak Varma"],
+      "Bowler": ["Jasprit Bumrah"],
+      "All-Rounder": ["Hardik Pandya"],
+      "Wicketkeeper-Batter": [],
+      "Wicketkeeper": []
+    },
+    "CSK": {
+      "Batter": ["Ruturaj Gaikwad"],
+      "Bowler": ["Matheesha Pathirana"],
+      "All-Rounder": ["Ravindra Jadeja", "Shivam Dube"],
+      "Wicketkeeper-Batter": [],
+      "Wicketkeeper": ["MS Dhoni"]
+    },
+    "RCB": {
+      "Batter": ["Virat Kohli", "Rajat Patidar"],
+      "Bowler": ["Yash Dayal"],
+      "All-Rounder": [],
+      "Wicketkeeper-Batter": [],
+      "Wicketkeeper": []
+    },
+    "KKR": {
+      "Batter": ["Rinku Singh", "Sunil Narine"],
+      "Bowler": ["Varun Chakaravarthy", "Harshit Rana"],
+      "All-Rounder": ["Andre Russell","Ramandeep Singh"],
+      "Wicketkeeper-Batter": [],
+      "Wicketkeeper": []
+    },
+    "DC": {
+      "Batter": [],
+      "Bowler": ["Kuldeep Yadav"],
+      "All-Rounder": ["Axar Patel", "Tristan Stubbs"],
+      "Wicketkeeper-Batter": ["Abhishek Porel"],
+      "Wicketkeeper": []
+    },
+    "PBKS": {
+      "Batter": ["Shashank Singh"],
+      "Bowler": [],
+      "All-Rounder": [],
+      "Wicketkeeper-Batter": ["Prabhsimran Singh"],
+      "Wicketkeeper": []
+    },
+    "RR": {
+      "Batter": ["Yashasvi Jaiswal", "Shimron Hetmyer"],
+      "Bowler": ["Sandeep Sharma"],
+      "All-Rounder": ["Riyan Parag"],
+      "Wicketkeeper-Batter": ["Sanju Samson", "Dhruv Jurel"],
+      "Wicketkeeper": []
+    },
+    "SRH": {
+      "Batter": ["Travis Head", "Nitish Kumar Reddy"],
+      "Bowler": [],
+      "All-Rounder": ["Abhishek Sharma", "Pat Cummins"],
+      "Wicketkeeper-Batter": ["Heinrich Klaasen"],
+      "Wicketkeeper": []
+    },
+    "GT": {
+      "Batter": ["Shubman Gill", "Sai Sudharsan"],
+      "Bowler": ["Rashid Khan"],
+      "All-Rounder": ["Rahul Tewatia", "Shahrukh Khan"],
+      "Wicketkeeper-Batter": [],
+      "Wicketkeeper": []
+    },
+    "LSG": {
+      "Batter": ["Ayush Badoni"],
+      "Bowler": ["Ravi Bishnoi", "Mayank Yadav", "Mohsin Khan"],
+      "All-Rounder": [],
+      "Wicketkeeper-Batter": ["Nicholas Pooran"],
+      "Wicketkeeper": []
+    }
+  };
+}
+
 const initialTeams = [
   { name: "Mumbai Indians", code: "MI", color: "from-blue-600 to-blue-800", logo: "🏏", initialBudget: 45 },
   { name: "Chennai Super Kings", code: "CSK", color: "from-yellow-500 to-yellow-600", logo: "🦁", initialBudget: 55 },
@@ -140,8 +216,11 @@ const handlePlayerSold = (roomId) => {
   const soldPlayer = room.currentPlayer;
   const winningTeam = room.highestBidder;
   const finalBid = room.currentBid;
-
-  room.unsoldPlayerSet.delete(soldPlayer);
+  const role = room.currentPlayer.Role
+  if (finalBid != 0) {
+    room.squads[winningTeam][role].push(soldPlayer["Player Name"]);
+    room.unsoldPlayerSet.delete(soldPlayer);
+  }
   if (room.players[room.currentSetIndex].length > 0) {
     room.players[room.currentSetIndex].shift();
   }
@@ -149,12 +228,13 @@ const handlePlayerSold = (roomId) => {
   room.sold = true;
   room.isActive = false;
   room.setHistory.push({
-    player: soldPlayer.name,
+    player: soldPlayer["Player Name"],
     team: winningTeam,
     amount: finalBid,
     role: soldPlayer.Role,
     timestamp: new Date().toISOString()
   });
+
   room.currentPlayerInSetIndex++;
 
   if (winningTeam && room.teamBudgets) {
@@ -172,7 +252,7 @@ const handlePlayerSold = (roomId) => {
     room.currentSetIndex = nextSetIndex;
     room.currentPlayerInSetIndex = 0;
     room.setHistory = [];
-    
+
     broadcastToRoom(roomId, {
       type: "set_break_start",
       room: roomId,
@@ -193,6 +273,7 @@ const handlePlayerSold = (roomId) => {
     finalBid: finalBid,
     winningTeam: winningTeam,
     updatedBudgets: room.teamBudgets,
+    squads: room.squads, // Send updated squads to clients
     setProgress: {
       current: room.currentPlayerInSetIndex,
       remainingInSet: 20 - room.currentPlayerInSetIndex,
@@ -206,13 +287,12 @@ const handlePlayerSold = (roomId) => {
 const moveToNextPlayer = (roomId) => {
   const room = roomData[roomId];
   if (!room || room.inBreak) return;
-
   if (!room.players[room.currentSetIndex] || room.players[room.currentSetIndex].length === 0) {
     console.error("No players available in current set!");
     return;
   }
   console.log(room.currentPlayerInSetIndex)
-  room.currentPlayer = room.players[room.currentSetIndex][0]; 
+  room.currentPlayer = room.players[room.currentSetIndex][0];
   room.currentBid = 0;
   room.basePrice = room.currentPlayer.basePrice / 100;
   room.highestBidder = null;
@@ -220,7 +300,6 @@ const moveToNextPlayer = (roomId) => {
   room.timer = 45;
   room.sold = false;
   room.isActive = true;
-
   broadcastToRoom(roomId, {
     type: "next_player",
     room: roomId,
@@ -291,7 +370,8 @@ wss.on("connection", (ws) => {
               currentPlayerInSetIndex: 0,
               inBreak: false,
               setBreakTimer: 0,
-              setHistory: []
+              setHistory: [],
+              squads: createInitialSquad() // Create a separate squad instance for each room
             };
 
             initialTeams.forEach(team => {
@@ -352,7 +432,8 @@ wss.on("connection", (ws) => {
             playerInSetIndex: roomData[data.room].currentPlayerInSetIndex,
             setHistory: roomData[data.room].setHistory,
             inBreak: roomData[data.room].inBreak,
-            setBreakTimer: roomData[data.room].setBreakTimer
+            setBreakTimer: roomData[data.room].setBreakTimer,
+            squads: roomData[data.room].squads
           }));
 
           broadcastToRoom(data.room, {

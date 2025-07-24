@@ -157,7 +157,7 @@ const Join = () => {
                 <button
                   onClick={handleConfirmTeam}
                   disabled={!selectedTeam}
-                  className="w-full h-14 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-800 transition-all duration-300 mt-4 disabled:opacity-50"
+                  className="w-full h-14 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-800 transition-all duration-300 mt-4 disabled:opacity-50 cursor-pointer"
                 >
                   {selectedTeam ? `Confirm ${selectedTeam.name}` : "Select Team First"}
                 </button>
