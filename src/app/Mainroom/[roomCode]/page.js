@@ -30,11 +30,14 @@ export default function AuctionPage() {
   };
 
   // State management
+  const [auctionStarted, setAuctionStarted] = useState(false);
+  const [waitingTeams, setWaitingTeams] = useState(0);
+  const [minTeams, setMinTeams] = useState(10);
   const [playersLeft, setPlayersLeft] = useState(1);
   const [Budget, setBudget] = useState(0);
   const [teamBudgets, setTeamBudgets] = useState({});
   const [currentBid, setCurrentBid] = useState(0);
-  const [timer, setTimer] = useState(45);
+  const [timer, setTimer] = useState(30);
   const [sold, setSold] = useState(false);
   const [biddingHistory, setBiddingHistory] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
@@ -126,11 +129,14 @@ export default function AuctionPage() {
           switch (msg.type) {
             case "joined":
               setRoomSize(msg.size);
+              setAuctionStarted(msg.auctionStarted);
+              setWaitingTeams(msg.waitingTeams);
+              setMinTeams(msg.minTeams);
               setSelectedTeams(msg.selectedTeams || []);
               setCurrentPlayer(msg.currentPlayer || currentPlayer);
               setCurrentBid(msg.currentBid || 0);
               setBiddingHistory(msg.biddingHistory || []);
-              setTimer(msg.timer || 45);
+              setTimer(msg.timer || 30);
               setTeamBudgets(msg.teamBudgets || {});
               setBudget(msg.myBudget || Budget);
               setPlayerInSetIndex(msg.playerInSetIndex || 0);
@@ -148,7 +154,17 @@ export default function AuctionPage() {
                 setNextSet(roles[(msg.currentSetIndex + 1) % roles.length]);
               }
               break;
+            case "auction_started":
+              setAuctionStarted(true);
+              setCurrentPlayer(msg.player);
+              setCurrentBid(msg.currentBid);
+              setTimer(msg.timer);
+              break;
 
+            case "waiting_status":
+              setWaitingTeams(msg.waitingTeams);
+              setMinTeams(msg.minTeams);
+              break;
             case "member_joined":
             case "member_left":
               setRoomSize(msg.size);
@@ -390,6 +406,36 @@ export default function AuctionPage() {
               <span className="text-xs font-bold text-white">{countdown}</span>
             </div>
           </div>
+        </div>
+      </div>
+    ) : !auctionStarted ? (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900 p-4">
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl border-2 border-orange-500/50 p-8 max-w-2xl w-full text-center">
+          <h1 className="text-4xl font-bold text-orange-400 mb-6">Waiting for Teams</h1>
+
+          <div className="mb-8">
+            <div className="w-full bg-gray-700 rounded-full h-6 mb-4">
+              <div
+                className="bg-orange-500 h-6 rounded-full transition-all duration-500"
+                style={{ width: `${(waitingTeams / minTeams) * 100}%` }}
+              ></div>
+            </div>
+
+            <p className="text-xl text-white">
+              {waitingTeams} of {minTeams} teams joined
+            </p>
+            <p className="text-gray-400 mt-4">
+              Auction will start automatically when all teams join
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="animate-pulse text-6xl">⏳</div>
+          </div>
+
+          <p className="text-gray-300 mt-6">
+            Share room code: <span className="font-bold text-white">#{roomId}</span>
+          </p>
         </div>
       </div>
     ) : inBreak ? (

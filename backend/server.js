@@ -201,7 +201,7 @@ const initialTeams = [
   { name: "Gujarat Titans", code: "GT", color: "from-slate-800 to-yellow-400", logo: "⛰️", initialBudget: 55 },
   { name: "Lucknow Super Giants", code: "LSG", color: "from-blue-400 to-orange-300", logo: "🦅", initialBudget: 55 }
 ];
-
+const MIN_TEAMS_TO_START = 10;
 const cleanupRoom = (roomId) => {
   if (rooms[roomId] && rooms[roomId].length === 0) {
     delete rooms[roomId];
@@ -390,7 +390,7 @@ const moveToNextPlayer = (roomId) => {
   room.basePrice = room.currentPlayer.basePrice / 100;
   room.highestBidder = null;
   room.biddingHistory = [];
-  room.timer = 45;
+  room.timer = 30;
   room.sold = false;
   room.isActive = true;
   broadcastToRoom(roomId, {
@@ -399,7 +399,7 @@ const moveToNextPlayer = (roomId) => {
     player: room.currentPlayer,
     currentBid: room.currentBid,
     basePrice: room.basePrice,
-    timer: 45,
+    timer: 30,
     biddingHistory: [],
     setInfo: {
       index: room.currentSetIndex,
@@ -443,7 +443,6 @@ wss.on("connection", (ws) => {
           removeClientFromRoom(ws);
 
           if (!rooms[data.room]) {
-            const firstPlayer = allPlayers.length > 0 && allPlayers[0].length > 0 ? allPlayers[0][0] : null;
             rooms[data.room] = [];
             roomData[data.room] = {
               teams: [...initialTeams],
@@ -451,12 +450,12 @@ wss.on("connection", (ws) => {
               teamBudgets: {},
               players: allPlayers.map(set => [...set]),
               currentPlayerIndex: 0,
-              currentPlayer: firstPlayer,
+              currentPlayer: null, // Start with null until auction begins
               currentBid: 0,
               highestBidder: null,
               biddingHistory: [],
-              timer: 45,
-              isActive: true,
+              timer: 30,
+              isActive: false, // Auction not active initially
               sold: false,
               unsoldPlayerSet: new Set(allPlayers.flat()),
               currentSetIndex: 0,
@@ -464,7 +463,10 @@ wss.on("connection", (ws) => {
               inBreak: false,
               setBreakTimer: 0,
               setHistory: [],
-              squads: createInitialSquad() // Create a separate squad instance for each room
+              squads: createInitialSquad(),
+              auctionStarted: false,
+              waitingTeams: 0, // Will be incremented below
+              minTeamsRequired: 10
             };
 
             initialTeams.forEach(team => {
@@ -504,6 +506,26 @@ wss.on("connection", (ws) => {
                 selectedAt: new Date().toISOString(),
                 selectedBy: data.teamName
               });
+
+              // Increment waitingTeams only for new unique teams
+              roomData[data.room].waitingTeams = roomData[data.room].selectedTeams.length;
+
+              // Check if we have enough teams to start
+              if (!roomData[data.room].auctionStarted &&
+                roomData[data.room].waitingTeams >= roomData[data.room].minTeamsRequired) {
+                roomData[data.room].auctionStarted = true;
+                roomData[data.room].isActive = true;
+                roomData[data.room].currentPlayer = roomData[data.room].players[0][0];
+                roomData[data.room].basePrice = roomData[data.room].currentPlayer["Base Price (Rs Lakh)"] / 100;
+
+                broadcastToRoom(data.room, {
+                  type: "auction_started",
+                  player: roomData[data.room].currentPlayer,
+                  currentBid: 0,
+                  timer: 30,
+                  basePrice: roomData[data.room].basePrice
+                });
+              }
             }
           }
 
@@ -526,19 +548,24 @@ wss.on("connection", (ws) => {
             setHistory: roomData[data.room].setHistory,
             inBreak: roomData[data.room].inBreak,
             setBreakTimer: roomData[data.room].setBreakTimer,
-            squads: roomData[data.room].squads
+            squads: roomData[data.room].squads,
+            auctionStarted: roomData[data.room].auctionStarted,
+            waitingTeams: roomData[data.room].waitingTeams,
+            minTeamsRequired: roomData[data.room].minTeamsRequired
           }));
 
           broadcastToRoom(data.room, {
             type: "member_joined",
             room: data.room,
             size: roomSize,
-            selectedTeams: roomData[data.room].selectedTeams
+            selectedTeams: roomData[data.room].selectedTeams,
+            waitingTeams: roomData[data.room].waitingTeams,
+            minTeamsRequired: roomData[data.room].minTeamsRequired,
+            auctionStarted: roomData[data.room].auctionStarted
           }, ws);
 
-          console.log(`Client joined ${data.room} as ${data.teamName} (size: ${roomSize})`);
+          console.log(`Client joined ${data.room} as ${data.teamName} (${roomData[data.room].waitingTeams}/${roomData[data.room].minTeamsRequired} teams)`);
           break;
-
         case "select_team":
           if (!ws.roomId || !roomData[ws.roomId]) {
             return ws.send(JSON.stringify({
@@ -619,7 +646,7 @@ wss.on("connection", (ws) => {
 
           room.currentBid = amount;
           room.highestBidder = team;
-          room.timer = 25;
+          room.timer = 15;
           room.isActive = true;
           room.sold = false;
 
@@ -715,14 +742,22 @@ wss.on("connection", (ws) => {
 setInterval(() => {
   Object.keys(roomData).forEach(roomId => {
     const room = roomData[roomId];
+    const activeClients = rooms[roomId]?.filter(client => client.readyState === WebSocket.OPEN) || [];
 
+    // Skip if no active clients in room
+    if (activeClients.length === 0) {
+      return;
+    }
+
+    // Handle break time first if in break
     if (room.inBreak) {
       room.setBreakTimer--;
 
       broadcastToRoom(roomId, {
         type: "set_break_update",
         breakTime: room.setBreakTimer,
-        room: roomId
+        room: roomId,
+        nextSet: roles[(room.currentSetIndex + 1) % roles.length]
       });
 
       if (room.setBreakTimer <= 0) {
@@ -732,12 +767,50 @@ setInterval(() => {
       return;
     }
 
-    if (room.timer > 0 && !room.sold && rooms[roomId] && rooms[roomId].length > 0) {
+    // Handle waiting room status if auction hasn't started
+    if (!room.auctionStarted) {
+      // Update waiting teams count (in case of disconnects)
+      room.waitingTeams = room.selectedTeams.length;
+
+      broadcastToRoom(roomId, {
+        type: "waiting_status",
+        waitingTeams: room.waitingTeams,
+        minTeams: room.minTeamsRequired || 10,
+        selectedTeams: room.selectedTeams,
+        room: roomId
+      });
+
+      // Check if we now have enough teams to start
+      if (room.waitingTeams >= (room.minTeamsRequired || 10)) {
+        room.auctionStarted = true;
+        room.isActive = true;
+        room.currentPlayer = room.players[room.currentSetIndex][0];
+        room.basePrice = room.currentPlayer["Base Price (Rs Lakh)"] / 100;
+
+        broadcastToRoom(roomId, {
+          type: "auction_started",
+          player: room.currentPlayer,
+          currentBid: 0,
+          timer: 30,
+          basePrice: room.basePrice,
+          setInfo: {
+            index: room.currentSetIndex,
+            role: roles[room.currentSetIndex]
+          }
+        });
+      }
+      return;
+    }
+
+    // Normal auction timer logic
+    if (room.timer > 0 && !room.sold && activeClients.length > 0) {
       room.timer--;
       broadcastToRoom(roomId, {
         type: "timer_update",
         timer: room.timer,
-        room: roomId
+        room: roomId,
+        currentBid: room.currentBid,
+        highestBidder: room.highestBidder
       });
     } else if (room.timer === 0 && !room.sold) {
       handlePlayerSold(roomId);
