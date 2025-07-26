@@ -301,7 +301,7 @@ export default function AuctionPage() {
 
   // Connection status UI
   const getConnectionStatus = () => {
-    if (connected) return { text: `✅ Online (${Math.floor(roomSize)} teams)`, color: 'text-green-400' };
+    if (connected) return { text: `✅ Online`, color: 'text-green-400' };
     if (isReconnecting) return { text: '🔄 Reconnecting...', color: 'text-yellow-400' };
     return { text: '❌ Offline', color: 'text-red-400' };
   };
@@ -309,7 +309,11 @@ export default function AuctionPage() {
   const connectionStatus = getConnectionStatus();
   const [showRules, setShowRules] = useState(true);
   const [countdown, setCountdown] = useState(15);
-
+  const [cursize, setcursize] = useState(selectedTeams.length);
+  useEffect(() => {
+    setcursize(selectedTeams.length)
+  }, [selectedTeams])
+  
   // Initial countdown timer for rules
   useEffect(() => {
     if (!showRules) return;
@@ -783,7 +787,7 @@ export default function AuctionPage() {
             <div className="bg-white/10 backdrop-blur-none border border-white/20 rounded-xl p-4 md:p-6 shadow-xl">
               <div className="flex items-center space-x-2 mb-3 md:mb-4">
                 <span className="text-blue-400 text-lg md:text-xl">👥</span>
-                <h3 className="text-white font-semibold md:text-lg">Connected Teams ({roomSize})</h3>
+                <h3 className="text-white font-semibold md:text-lg">Connected Teams ({cursize})</h3>
               </div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {selectedTeams.map((team, index) => (
