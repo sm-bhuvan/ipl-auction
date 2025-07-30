@@ -40,24 +40,43 @@ const Create = () => {
   };
 
 
-const handleCreate = () => {
+const handleCreate = async () => {
   if (!selectedTeam) {
     alert("Please select a team first!");
     return;
   }
 
   setIsLoading(true);
-  let roomCode = generateRoomCode();
+  let roomCode;
 
-  while (rooms.includes(roomCode) || rooms[roomCode]) {
+  // Try generating a unique room code by checking the DB
+  while (true) {
     roomCode = generateRoomCode();
+
+    const res = await fetch("/api/room/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomCode }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) break; // Success, move ahead
+
+    if (res.status === 409) {
+      console.warn("Room code exists. Retrying...");
+    } else {
+      alert("Server error while creating room.");
+      setIsLoading(false);
+      return;
+    }
   }
 
   dispatch(add(roomCode));
   setCurrentRoomCode(roomCode);
 
   const websocket = new WebSocket(`ws://localhost:8080`);
-  
+
   websocket.onopen = () => {
     websocket.send(JSON.stringify({ type: "join", room: roomCode }));
   };
@@ -69,12 +88,14 @@ const handleCreate = () => {
     switch (data.type) {
       case "joined":
         dispatch(addroom(roomCode));
-        
-        websocket.send(JSON.stringify({
-          type: "select_team",
-          room: roomCode,
-          teamCode: selectedTeam.code
-        }));
+
+        websocket.send(
+          JSON.stringify({
+            type: "select_team",
+            room: roomCode,
+            teamCode: selectedTeam.code,
+          })
+        );
         break;
 
       case "team_selected_success":
@@ -98,6 +119,7 @@ const handleCreate = () => {
     alert("Failed to connect to server");
   };
 };
+
 
   const navigateToRoom = () => {
     if (currentRoomCode && selectedTeam) {
