@@ -1,40 +1,83 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import Dropdown from "./dropdown";
-import { addteam, remove, addroom } from "@/app/redux/teams";
+import { addroom, remove, addteam } from "@/app/redux/teams";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 const Join = () => {
   const router = useRouter();
   const dispatch = useDispatch();
-
-  // Store Redux state in ref to avoid stale closures
-  const allteamsRef = useRef([]);
-  allteamsRef.current = useSelector((state) => state.teams.value);
   
-  const [roomPres, setRoomPres] = useState(false);
   const [room, setRoom] = useState("");
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
-  const [prevSelectedTeam, setPrevSelectedTeam] = useState(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [error, setError] = useState("");
   const [ws, setWs] = useState(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const roomCode = e.target.elements[0].value.trim().toUpperCase();
-    console.log("Room Code:", roomCode);
+  // Clean up WebSocket connection on unmount
+  useEffect(() => {
+    return () => {
+      if (ws) {
+        ws.close();
+        console.log("WebSocket connection cleaned up");
+      }
+    };
+  }, [ws]);
 
-    if (roomCode) {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const roomCode = formData.get("roomCode")?.toString().trim().toUpperCase() || "";
+    
+    if (!roomCode) {
+      setError("Room code is required");
+      return;
+    }
+
+    setIsJoining(true);
+    setError("");
+
+    try {
+      // Check if room exists using the endpoint
+      const res = await fetch("/api/room/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode }),
+      });
+      
+      const data = await res.json();
+      
+      // Handle API response based on endpoint behavior
+      if (res.status === 404) {
+        setError("Room doesn't exist");
+        setIsJoining(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setError("Server error. Please try again.");
+        setIsJoining(false);
+        return;
+      }
+
+      // Connect to WebSocket server
       const websocket = new WebSocket(`ws://localhost:8080`);
+      setWs(websocket);
 
       websocket.onopen = () => {
-        websocket.send(JSON.stringify({ type: "join", room: roomCode }));
+        websocket.send(JSON.stringify({ 
+          type: "join", 
+          room: roomCode 
+        }));
         setRoom(roomCode);
-        setWs(websocket);
-        console.log("WebSocket connection established for room:", roomCode);
+        console.log("WebSocket connection established");
       };
 
       websocket.onmessage = (event) => {
@@ -43,30 +86,31 @@ const Join = () => {
 
         switch (data.type) {
           case "joined":
-            // Server sends available teams when joining
-            setRoomPres(true);
             setTeams(data.teams || []);
-            
-            // Add room to Redux with teams from server
             dispatch(addroom(roomCode));
+            // Add available teams to Redux
             if (data.teams) {
               data.teams.forEach(team => {
                 dispatch(addteam({ roomCode, team }));
               });
             }
-            
-            console.log(`Joined room ${data.room}. Available teams:`, data.teams);
             break;
 
           case "team_selected":
-            // Another user selected a team - update available teams
+            // Update available teams when another user selects a team
             setTeams(data.availableTeams || []);
-            console.log(`Team ${data.team.name} was selected by another user`);
+            // Update Redux state
+            dispatch(addroom(roomCode));
+            if (data.availableTeams) {
+              data.availableTeams.forEach(team => {
+                dispatch(addteam({ roomCode, team }));
+              });
+            }
             break;
 
           case "error":
-            console.error("Server error:", data.message);
-            alert(`Error: ${data.message}`);
+            setError(data.message || "Server error");
+            setIsJoining(false);
             break;
 
           default:
@@ -74,44 +118,45 @@ const Join = () => {
         }
       };
 
-      websocket.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        alert("Failed to connect to server");
+      websocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setError("Failed to connect to server");
+        setIsJoining(false);
       };
 
       websocket.onclose = () => {
         console.log("WebSocket connection closed");
-        setRoomPres(false);
+        setIsJoining(false);
       };
-    } else {
-      console.error("Server code is required");
+    } catch (err) {
+      console.error("Network error:", err);
+      setError("Network error. Please try again.");
+      setIsJoining(false);
     }
   };
 
   const handleTeamSelect = (team) => {
-    if (room && selectedTeam) {
-      dispatch(addteam({ roomCode: room, team: selectedTeam }));
-    }
-    setPrevSelectedTeam(selectedTeam);
     setSelectedTeam(team);
   };
 
   const handleConfirmTeam = () => {
-    if (room && selectedTeam && ws) {
-      // Tell server about team selection
-      ws.send(JSON.stringify({
-        type: "select_team",
-        room: room,
-        teamCode: selectedTeam.code
-      }));
+    if (!room || !selectedTeam || !ws) return;
 
-      // Remove from Redux
-      dispatch(remove({ roomCode: room, teamCode: selectedTeam.code }));
-      
-      // Navigate to auction room
-      router.push(`/auctionroom/${room}${selectedTeam.code}`);
-    }
+    setIsConfirming(true);
+    
+    // Notify server about team selection
+    ws.send(JSON.stringify({
+      type: "select_team",
+      room,
+      teamCode: selectedTeam.code
+    }));
+
+    // Update local state and navigate
+    dispatch(remove({ roomCode: room, teamCode: selectedTeam.code }));
+    router.push(`/auctionroom/${room}${selectedTeam.code}`);
   };
+
+  const isRoomActive = room && teams.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
@@ -127,48 +172,68 @@ const Join = () => {
         <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-white text-2xl font-semibold">
-              Enter the Server Code
+              {isRoomActive ? "Select Your Team" : "Enter Room Code"}
             </CardTitle>
           </CardHeader>
+          
           <CardContent className="space-y-4 p-6">
-            <form onSubmit={handleSubmit}>
-              <input
-                type="text"
-                placeholder="Enter Server Code"
-                className="w-full h-14 bg-white/20 text-white placeholder-gray-400 border border-white/30 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 uppercase"
-                disabled={roomPres}
-              />
-              <button
-                type="submit"
-                disabled={roomPres}
-                className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-300 mt-4 disabled:opacity-50"
-              >
-                {roomPres ? "Connected!" : "Submit"}
-              </button>
-            </form>
-
-            {roomPres && teams.length > 0 && (
+            {!isRoomActive ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <input
+                  name="roomCode"
+                  type="text"
+                  placeholder="Enter Room Code"
+                  className="w-full h-14 bg-white/20 text-white placeholder-gray-400 border border-white/30 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 uppercase"
+                  disabled={isJoining}
+                />
+                
+                {error && (
+                  <p className="text-red-400 text-sm">{error}</p>
+                )}
+                
+                <Button
+                  type="submit"
+                  disabled={isJoining}
+                  className="w-full h-14 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isJoining ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : "Join Room"}
+                </Button>
+              </form>
+            ) : (
               <>
                 <div className="text-center text-green-400 mb-4">
                   <p>✅ Connected to room {room}</p>
-                  <p className="text-sm text-gray-300">{teams.length} teams available</p>
+                  <p className="text-sm text-gray-300">
+                    {teams.length} team{teams.length !== 1 ? 's' : ''} available
+                  </p>
                 </div>
-                <Dropdown onSelect={handleTeamSelect} teams={teams} />
-                <button
+                
+                <Dropdown 
+                  onSelect={handleTeamSelect} 
+                  teams={teams} 
+                  disabled={isConfirming}
+                />
+                
+                <Button
                   onClick={handleConfirmTeam}
-                  disabled={!selectedTeam}
-                  className="w-full h-14 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-800 transition-all duration-300 mt-4 disabled:opacity-50 cursor-pointer"
+                  disabled={!selectedTeam || isConfirming}
+                  className="w-full h-14 bg-green-600 hover:bg-green-700"
                 >
-                  {selectedTeam ? `Confirm ${selectedTeam.name}` : "Select Team First"}
-                </button>
+                  {isConfirming ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : selectedTeam 
+                    ? `Confirm ${selectedTeam.name}` 
+                    : "Select Team First"}
+                </Button>
               </>
-            )}
-
-            {roomPres && teams.length === 0 && (
-              <div className="text-center text-yellow-400 p-4">
-                <p>⚠️ No teams available in this room</p>
-                <p className="text-sm text-gray-300">All teams may have been selected</p>
-              </div>
             )}
           </CardContent>
         </Card>
