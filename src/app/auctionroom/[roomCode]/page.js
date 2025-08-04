@@ -1,24 +1,15 @@
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useWebSocket } from "@/app/contexts/WebSocketContext";
-import { useRouter } from "next/navigation";
 
 const AuctionRoom = () => {
   const router = useRouter();
   const { roomCode } = useParams();
-  
-  // Validate room code first
-  if (!roomCode || typeof roomCode !== "string" || roomCode.length < 5) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-white">
-        <p>Invalid room code. Please check the URL.</p>
-      </div>
-    );
-  }
 
-  const actualCode = roomCode.slice(0, 5);
-  const teamName = decodeURIComponent(roomCode.slice(5));
+  const isValidRoomCode = roomCode && typeof roomCode === "string" && roomCode.length >= 5;
+  const actualCode = isValidRoomCode ? roomCode.slice(0, 5) : "";
+  const teamName = isValidRoomCode ? decodeURIComponent(roomCode.slice(5)) : "";
 
   const [size, setSize] = useState(null);
   const [error, setError] = useState(null);
@@ -26,13 +17,13 @@ const AuctionRoom = () => {
   const [connectionStatus, setConnectionStatus] = useState("Connecting...");
 
   const { ws, connect, isConnected, joinRoom, leaveRoom, getReadyState } = useWebSocket();
+
   useEffect(() => {
     if (size === 20) {
-     {/* router.push("/Mainroom/");*/}
       router.push(`/Mainroom/${roomCode}`);
-
     }
-  }, [size, router]);
+  }, [size, router, roomCode]);
+
   const handleMessage = useCallback((event) => {
     try {
       const data = JSON.parse(event.data);
@@ -44,19 +35,10 @@ const AuctionRoom = () => {
           setIsJoining(false);
           setError(null);
           setConnectionStatus("Connected!");
-          console.log(`Successfully joined room ${data.room} with ${data.size} members`);
           break;
 
         case "member_joined":
-          setSize(data.size);
-          console.log(`Member joined. Room now has ${data.size} members`);
-          break;
-
         case "member_left":
-          setSize(data.size);
-          console.log(`Member left. Room now has ${data.size} members`);
-          break;
-
         case "size":
           setSize(data.size);
           setIsJoining(false);
@@ -80,8 +62,9 @@ const AuctionRoom = () => {
     }
   }, []);
 
-  // Setup WebSocket connection and join room
   useEffect(() => {
+    if (!isValidRoomCode) return;
+
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
@@ -89,20 +72,18 @@ const AuctionRoom = () => {
 
     const setupConnection = async () => {
       if (!isMounted) return;
-      
+
       try {
         setIsJoining(true);
         setError(null);
         setConnectionStatus("Connecting to server...");
 
-        // Connect to WebSocket server
         await connect(actualCode);
         setConnectionStatus("Connected! Joining room...");
 
-        // Retry mechanism for joining room
         const attemptJoinRoom = () => {
           if (!isMounted) return;
-          
+
           const state = getReadyState();
           if (state === WebSocket.OPEN) {
             joinRoom(actualCode);
@@ -136,22 +117,19 @@ const AuctionRoom = () => {
       isMounted = false;
       clearTimeout(retryTimer);
     };
-  }, [actualCode, connect, joinRoom, getReadyState]);
+  }, [actualCode, connect, joinRoom, getReadyState, isValidRoomCode]);
 
-  // Listen for WebSocket messages
   useEffect(() => {
     if (!ws) return;
 
     const messageHandler = (event) => handleMessage(event);
     ws.addEventListener("message", messageHandler);
 
-    // Handle connection errors
     const errorHandler = () => {
       setError("WebSocket connection error");
       setConnectionStatus("Connection lost");
     };
 
-    // Handle connection close
     const closeHandler = () => {
       if (getReadyState() === WebSocket.CLOSED) {
         setError("Connection closed unexpectedly");
@@ -169,7 +147,6 @@ const AuctionRoom = () => {
     };
   }, [ws, handleMessage, getReadyState]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (getReadyState() === WebSocket.OPEN) {
@@ -178,17 +155,13 @@ const AuctionRoom = () => {
     };
   }, [actualCode, leaveRoom, getReadyState]);
 
-  
-
   const handleRetry = async () => {
     setError(null);
     setIsJoining(true);
     setConnectionStatus("Reconnecting...");
-    
+
     try {
       await connect(actualCode);
-      
-      // Wait for connection to stabilize
       setTimeout(() => {
         if (getReadyState() === WebSocket.OPEN) {
           joinRoom(actualCode);
@@ -206,12 +179,18 @@ const AuctionRoom = () => {
     }
   };
 
+  if (!isValidRoomCode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white">
+        <p>Invalid room code. Please check the URL.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-8">
       <div className="bg-white/10 backdrop-blur-md rounded-lg p-8 max-w-md w-full text-center border border-white/20">
-        <h1 className="text-2xl font-bold mb-6 text-orange-400">
-          Auction Room
-        </h1>
+        <h1 className="text-2xl font-bold mb-6 text-orange-400">Auction Room</h1>
 
         <div className="mb-4 text-sm text-gray-400">
           <p>Room Code: <span className="font-mono text-white">{actualCode}</span></p>
@@ -249,13 +228,13 @@ const AuctionRoom = () => {
             <div className="text-green-400">
               <p className="text-lg mb-2">✅ Successfully Joined!</p>
               <div className="bg-green-900/20 border border-green-500/30 rounded p-4 mb-4">
-                <p className="text-2xl font-bold text-white">{Math.floor(size/2)}</p>
+                <p className="text-2xl font-bold text-white">{Math.floor(size / 2)}</p>
                 <p className="text-sm">Player{size !== 1 ? 's' : ''} in room</p>
               </div>
             </div>
 
             <button
-            disabled={true}
+              disabled={true}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               Wait Till 10 Users Join

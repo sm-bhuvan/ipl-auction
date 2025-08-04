@@ -189,7 +189,7 @@ const IPLSquadsDisplay = ({ squads }) => {
             <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl p-12 text-center border border-white/20">
               <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <h3 className="text-2xl font-bold text-gray-300 mb-2">No Players Yet</h3>
-              <p className="text-gray-400">This team hasn't bought any players in the auction</p>
+              <p className="text-gray-400">This team has not bought any players in the auction</p>
             </div>
           )}
         </div>
