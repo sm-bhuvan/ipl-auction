@@ -11,6 +11,7 @@ let allPlayers = []
 let playersFetched = false
 
 const client = new MongoClient(MONGODB_URI)
+console.log("✅ Backend server starting...");
 
 async function fetchPlayersFromMongo() {
   try {
@@ -22,7 +23,6 @@ async function fetchPlayersFromMongo() {
 
     for (let i = 0; i < roles.length; i++) {
       const role = roles[i]
-      // MODIFIED: Limit to only 5 players per role for testing
       const playersInRole = await collection.find({ Role: role }).sort({ "Matches in IPL": -1 }).toArray()
       allPlayers[i] = playersInRole
       console.log(`Fetched ${playersInRole.length} players for role: ${role} (LIMITED FOR TESTING)`)

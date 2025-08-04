@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently --names \"FRONTEND,BACKEND\" -c \"cyan,magenta\" \"next dev --turbo\" \"nodemon backend/server.js\"",
     "build": "next build",
-    "start": "next start",
+    "start": "concurrently --names \"FRONTEND,BACKEND\" -c \"cyan,magenta\" \"next start\" \"nodemon backend/server.js\"",
     "lint": "next lint"
   },
   "dependencies": {
@@ -24,7 +24,7 @@
     "lucide-react": "^0.516.0",
     "mongodb": "^6.17.0",
     "mongoose": "^8.16.0",
-    "next": "^15.3.3",
+    "next": "^15.4.5",
     "next-auth": "^4.24.11",
     "nodemon": "^3.1.10",
     "react": "^19.0.0",
@@ -41,6 +41,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.10",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
     "eslint": "^9.29.0",
     "eslint-config-next": "^15.3.3",
     "postcss": "^8.5.6",
