@@ -2,15 +2,15 @@ const { WebSocketServer, WebSocket } = require("ws")
 const { MongoClient } = require("mongodb")
 
 const roles = ["Batter", "Bowler", "All-Rounder", "Wicketkeeper-Batter", "Wicketkeeper"]
-
-const wss = new WebSocketServer({ port: 8080 })
+const PORT = process.env.PORT || 8080
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://pragatheesh1729:123@ipl-auction.qtnwamb.mongodb.net/"
+const wss = new WebSocketServer({ port: PORT })
 const rooms = {}
 const roomData = {}
 let allPlayers = []
 let playersFetched = false
 
-const uri = "mongodb+srv://pragatheesh1729:123@ipl-auction.qtnwamb.mongodb.net/"
-const client = new MongoClient(uri)
+const client = new MongoClient(MONGODB_URI)
 
 async function fetchPlayersFromMongo() {
   try {
@@ -960,4 +960,4 @@ wss.on("close", () => {
   console.log("Server shutting down")
 })
 
-console.log("WebSocket server running on ws://localhost:8080")
+console.log("WebSocket server running on port", PORT)
