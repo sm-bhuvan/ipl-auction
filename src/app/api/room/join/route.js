@@ -1,5 +1,5 @@
-import connectDB from '../../../lib/connectDB'
-import Room from '../../../models/Room'
+import connectDB from '@/lib/mongodb';
+import Room from '@/models/Room';
 
 export async function POST(req) {
   await connectDB();
