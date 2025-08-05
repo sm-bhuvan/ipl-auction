@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names \"FRONTEND,BACKEND\" -c \"cyan,magenta\" \"next dev --turbo\" \"nodemon backend/server.js\"",
+    "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "concurrently --names \"FRONTEND,BACKEND\" -c \"cyan,magenta\" \"next start\" \"nodemon backend/server.js\"",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {

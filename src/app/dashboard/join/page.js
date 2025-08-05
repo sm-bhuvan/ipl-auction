@@ -68,7 +68,7 @@ const Join = () => {
       }
 
       // Connect to WebSocket server
-      const websocket = new WebSocket(`ws://localhost:8080`);
+      const websocket = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080");
       setWs(websocket);
 
       websocket.onopen = () => {

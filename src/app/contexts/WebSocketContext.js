@@ -30,7 +30,7 @@ export const WebSocketProvider = ({ children }) => {
       // Create new connection if none exists or previous was closed
       if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
         console.log(`Connecting to WebSocket server for room ${room}`);
-        ws.current = new WebSocket("ws://localhost:8080");
+        ws.current = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080");
 
         ws.current.onopen = () => {
           console.log("WebSocket connected successfully");
