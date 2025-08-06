@@ -75,6 +75,7 @@ const handleCreate = async () => {
   dispatch(add(roomCode));
   setCurrentRoomCode(roomCode);
 
+  console.log(process.env.NEXT_PUBLIC_WS_URL);
 
   const websocket = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080");
 

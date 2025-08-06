@@ -10,6 +10,27 @@ import IPLSquadsDisplay from "./IplSquadsDisplay"
 import { set } from "mongoose"
 
 export default function AuctionPage() {
+  const params = useParams()
+  const fullParam = params.roomCode || "00000RCB"
+  const roomId = fullParam.slice(0, 5)
+  const teamName = fullParam.slice(5)
+
+  // Single consistent price formatting function
+  const formatPrice = (amount) => {
+    // Ensure amount is a number and fix floating point precision
+    const numAmount = Number(amount)
+    if (isNaN(numAmount)) {
+      return "₹0 L" // Default value for invalid amounts
+    }
+    const fixedAmount = Number.parseFloat(numAmount.toFixed(2))
+    // Format as Lakhs or Crores
+    if (fixedAmount < 1) {
+      return `₹${(fixedAmount * 100).toFixed(0)} L`
+    }
+    return `₹${fixedAmount.toFixed(1)} Cr`
+  }
+
+  // State management
   const [auctionStarted, setAuctionStarted] = useState(false)
   const [waitingTeams, setWaitingTeams] = useState(0)
   const [minTeams, setMinTeams] = useState(10)
@@ -26,14 +47,13 @@ export default function AuctionPage() {
   const [finalBid, setFinalBid] = useState(0)
   const [squads, setSquads] = useState({})
   const [hoveredTeam, setHoveredTeam] = useState(null)
+
+  const roles = ["Batter", "Bowler", "All-Rounder", "Wicketkeeper-Batter"]
   const [currentSet, setCurrentSet] = useState(roles[0])
   const [nextSet, setNextSet] = useState(roles[1])
   const [playerInSetIndex, setPlayerInSetIndex] = useState(0)
   const [inBreak, setInBreak] = useState(false)
   const [breakTime, setBreakTime] = useState(0)
-  const [showRules, setShowRules] = useState(true)
-  const [countdown, setCountdown] = useState(15)
-  const [cursize, setcursize] = useState(selectedTeams.length)
   const [currentPlayer, setCurrentPlayer] = useState({
     "Player Name": "Loading...",
     Role: "",
@@ -56,31 +76,6 @@ export default function AuctionPage() {
   const [isReconnecting, setIsReconnecting] = useState(false)
   const wsRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
-  const params = useParams()
-  const fullParam = params.roomCode || "00000RCB"
-  const roomId = fullParam.slice(0, 5)
-  const teamName = fullParam.slice(5)
-  
-
-  // Single consistent price formatting function
-  const formatPrice = (amount) => {
-    // Ensure amount is a number and fix floating point precision
-    const numAmount = Number(amount)
-    if (isNaN(numAmount)) {
-      return "₹0 L" // Default value for invalid amounts
-    }
-    const fixedAmount = Number.parseFloat(numAmount.toFixed(2))
-    // Format as Lakhs or Crores
-    if (fixedAmount < 1) {
-      return `₹${(fixedAmount * 100).toFixed(0)} L`
-    }
-    return `₹${fixedAmount.toFixed(1)} Cr`
-  }
-
-  // State management\
-
-  const roles = ["Batter", "Bowler", "All-Rounder", "Wicketkeeper-Batter"]
-  
   const maxReconnectAttempts = 5
 
   // Initialize budget
@@ -112,7 +107,7 @@ export default function AuctionPage() {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     try {
-      const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080")
+      const ws = new WebSocket("ws://localhost:8080")
       wsRef.current = ws
 
       ws.onopen = () => {
@@ -331,6 +326,9 @@ export default function AuctionPage() {
 
   const connectionStatus = getConnectionStatus()
 
+  const [showRules, setShowRules] = useState(true)
+  const [countdown, setCountdown] = useState(15)
+  const [cursize, setcursize] = useState(selectedTeams.length)
 
   useEffect(() => {
     setcursize(selectedTeams.length)
